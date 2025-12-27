@@ -11,9 +11,13 @@ st.set_page_config(page_title="🎾 Tennis Game Analytics", layout="wide")
 # -------------------------------
 # PATH SETUP
 # -------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))      # app/
-PROJECT_ROOT = os.path.dirname(BASE_DIR)                  # Tennis Game/
-DATA_DIR = os.path.join(BASE_DIR, "..", "data", "processed")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
+DATA_DIR = os.path.join(PROJECT_ROOT, "data", "processed")
+if not os.path.exists(DATA_DIR):
+    st.error(f"DATA_DIR not found: {DATA_DIR}")
+    st.stop()
+
 
 
 
@@ -122,5 +126,6 @@ st.bar_chart(country_stats.set_index("country")["total_competitors"])
 # -------------------------------
 # FOOTER
 # -------------------------------
-st.caption("📌 Data Source: Sportradar API (Mock Data for Rankings)")
+st.caption("📌 Data Source: Sportradar API (Mock Data for Rankings) ")
+
 

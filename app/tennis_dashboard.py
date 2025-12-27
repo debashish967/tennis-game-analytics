@@ -1,152 +1,127 @@
+# tennis_dashboard.py
 import streamlit as st
 import pandas as pd
 import os
+import math
 
-# -------------------------------
+# =====================================================
 # PAGE CONFIG
-# -------------------------------
+# =====================================================
 st.set_page_config(
     page_title="🎾 Tennis Game Analytics",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-st.title("🎾 Tennis Game Analytics Dashboard")
-
-# -------------------------------
+# =====================================================
 # PATH SETUP
-# -------------------------------
+# =====================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(BASE_DIR, "..", "data", "processed")
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
+DATA_DIR = os.path.join(PROJECT_ROOT, "Data", "Processed")
 
-# -------------------------------
-# LOAD DATA (CSV)
-# -------------------------------
-@st.cache_data
-def load_data():
-    competitors = pd.read_csv(os.path.join(DATA_DIR, "competitors.csv"))
-    rankings = pd.read_csv(os.path.join(DATA_DIR, "competitor_rankings.csv"))
-    return competitors, rankings
+if not os.path.exists(DATA_DIR):
+    st.error(f"DATA_DIR not found: {DATA_DIR}")
+    st.stop()
+st.write("📁 Using DATA_DIR:", DATA_DIR)
 
-competitors_df, rankings_df = load_data()
+# =====================================================
+# LOAD DATA
+# =====================================================
+competitors_df = pd.read_csv(os.path.join(DATA_DIR, "competitors.csv"))
+rankings_df = pd.read_csv(os.path.join(DATA_DIR, "competitor_rankings.csv"))
 
-# Merge data
-df = competitors_df.merge(rankings_df, on="competitor_id", how="inner")
+competitions_df = pd.read_csv(os.path.join(DATA_DIR, "competitions.csv"))
+categories_df = pd.read_csv(os.path.join(DATA_DIR, "categories.csv"))
 
-# -------------------------------
-# KPI SECTION
-# -------------------------------
-st.subheader("📊 Overview")
+complexes_df = pd.read_csv(os.path.join(DATA_DIR, "complexes.csv"))
+venues_df = pd.read_csv(os.path.join(DATA_DIR, "venues.csv"))
 
-col1, col2, col3 = st.columns(3)
+# Merge competitor + rankings
+merged_df = competitors_df.merge(rankings_df, on="competitor_id", how="inner")
 
-with col1:
-    st.metric("Total Competitors", df["competitor_id"].nunique())
-
-with col2:
-    st.metric("Countries Represented", df["country"].nunique())
-
-with col3:
-    st.metric("Highest Points", int(df["points"].max()))
-
-st.divider()
-
-# -------------------------------
-# SEARCH & FILTER
-# -------------------------------
-st.subheader("🔍 Search Competitor")
-
-search = st.text_input("Enter competitor name")
-
-if search:
-    filtered_df = df[df["name"].str.contains(search, case=False, na=False)]
-else:
-    filtered_df = df
-
-st.dataframe(
-    filtered_df[["name", "country", "rank", "points", "competitions_played"]],
-    use_container_width=True
+# =====================================================
+# SIDEBAR NAVIGATION
+# =====================================================
+st.sidebar.title("🎾 Navigation")
+page = st.sidebar.radio(
+    "Go to",
+    [
+        "🏠 Overview",
+        "👤 Competitors",
+        "🏆 Competitions",
+        "🏟️ Complexes & Venues",
+        "🧠 SQL Explorer"
+    ]
 )
 
-st.divider()
+# =====================================================
+# REUSABLE PAGINATION
+# =====================================================
+def paginate_dataframe(df, page_size=20):
+    total_rows = df.shape[0]
+    total_pages = math.ceil(total_rows / page_size)
 
-# -------------------------------
-# LEADERBOARD
-# -------------------------------
-st.subheader("🏆 Top 10 Competitors")
-
-top10 = df.sort_values("rank").head(10)
-
-st.dataframe(
-    top10[["name", "country", "rank", "points"]],
-    use_container_width=True
-)
-
-st.divider()
-
-# -------------------------------
-# COUNTRY-WISE ANALYSIS
-# -------------------------------
-st.subheader("🌍 Country-wise Competitor Count")
-
-country_count = (
-    df.groupby("country")
-    .size()
-    .reset_index(name="Competitor Count")
-    .sort_values("Competitor Count", ascending=False)
-)
-
-st.bar_chart(country_count.set_index("country"))
-
-# -------------------------------
-# OVERVIEW METRICS
-# -------------------------------
-st.subheader("📊 Overview")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric("Total Competitors", competitors_df.shape[0])
-
-with col2:
-    st.metric(
-        "Countries Represented",
-        competitors_df["country"].nunique()
+    page_num = st.number_input(
+        "Page",
+        min_value=1,
+        max_value=total_pages,
+        value=1,
+        step=1
     )
 
-with col3:
-    st.metric(
-        "Highest Points",
-        rankings_df["points"].max()
+    start = (page_num - 1) * page_size
+    end = start + page_size
+
+    return df.iloc[start:end]
+
+# =====================================================
+# OVERVIEW PAGE
+# =====================================================
+if page == "🏠 Overview":
+    st.title("🎾 Tennis Game Analytics Dashboard")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Competitors", merged_df["competitor_id"].nunique())
+    col2.metric("Countries Represented", merged_df["country"].nunique())
+    col3.metric("Highest Points", merged_df["points"].max())
+
+    st.divider()
+
+    st.subheader("📌 What You Can Explore")
+    st.markdown("""
+    - 🎯 Competitor rankings & performance  
+    - 🏆 Tournament & competition insights  
+    - 🏟️ Sports complexes & venues distribution  
+    - 🧠 SQL-powered analytics (user friendly)  
+    """)
+
+# =====================================================
+# COMPETITORS DASHBOARD
+# =====================================================
+elif page == "👤 Competitors":
+    st.title("👤 Competitor Analytics")
+
+    # KPIs
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Competitors", merged_df.shape[0])
+    col2.metric("Countries", merged_df["country"].nunique())
+    col3.metric("Max Points", merged_df["points"].max())
+
+    st.divider()
+
+    # SEARCH WITH AUTOCOMPLETE
+    st.subheader("🔍 Search Competitor")
+    competitor_name = st.selectbox(
+        "Search by Competitor Name",
+        options=[""] + sorted(merged_df["name"].unique())
     )
 
-st.divider()
-
-# -------------------------------
-# JOINED DATA
-# -------------------------------
-merged_df = competitors_df.merge(
-    rankings_df,
-    on="competitor_id",
-    how="inner"
-)
-
-# -------------------------------
-# FILTERS
-# -------------------------------
-st.subheader("🔍 Search & Filters")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    name_filter = st.text_input("Search Competitor Name")
-
-with col2:
     country_filter = st.selectbox(
         "Filter by Country",
         ["All"] + sorted(merged_df["country"].unique())
     )
 
-with col3:
     min_points = st.slider(
         "Minimum Points",
         int(merged_df["points"].min()),
@@ -154,89 +129,156 @@ with col3:
         int(merged_df["points"].min())
     )
 
-filtered_df = merged_df.copy()
+    filtered_df = merged_df.copy()
 
-if name_filter:
-    filtered_df = filtered_df[
-        filtered_df["name"].str.contains(name_filter, case=False)
-    ]
+    if competitor_name:
+        filtered_df = filtered_df[filtered_df["name"] == competitor_name]
 
-if country_filter != "All":
-    filtered_df = filtered_df[
-        filtered_df["country"] == country_filter
-    ]
+    if country_filter != "All":
+        filtered_df = filtered_df[filtered_df["country"] == country_filter]
 
-filtered_df = filtered_df[
-    filtered_df["points"] >= min_points
-]
+    filtered_df = filtered_df[filtered_df["points"] >= min_points]
 
-# -------------------------------
-# COMPETITOR TABLE
-# -------------------------------
-st.subheader("👥 Competitor Rankings")
+    st.subheader("📋 Competitor Details")
+    paged_df = paginate_dataframe(filtered_df.sort_values("rank"))
+    st.dataframe(
+        paged_df[["name", "country", "rank", "movement", "points", "competitions_played"]],
+        use_container_width=True
+    )
 
-st.dataframe(
-    filtered_df[
-        [
-            "name",
-            "country",
-            "rank",
-            "movement",
-            "points",
-            "competitions_played"
+    # Visualization 1
+    st.subheader("🏆 Top 10 by Rank")
+    st.bar_chart(
+        merged_df.sort_values("rank").head(10).set_index("name")["points"]
+    )
+
+    # Visualization 2
+    st.subheader("🌍 Competitors by Country")
+    st.bar_chart(merged_df["country"].value_counts().head(10))
+
+# =====================================================
+# COMPETITIONS DASHBOARD
+# =====================================================
+elif page == "🏆 Competitions":
+    st.title("🏆 Competitions Analysis")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Competitions", competitions_df.shape[0])
+    col2.metric("Competition Types", competitions_df["type"].nunique())
+    col3.metric("Categories", categories_df.shape[0])
+
+    st.divider()
+
+    comp_merged = competitions_df.merge(categories_df, on="category_id", how="left")
+
+    # Visualization 3
+    st.subheader("📊 Competition Type Distribution")
+    st.bar_chart(comp_merged["type"].value_counts())
+
+    # Visualization 4
+    st.subheader("🚻 Gender Distribution")
+    st.bar_chart(comp_merged["gender"].value_counts())
+
+    # Visualization 5
+    st.subheader("🏷️ Top Categories by Competition Count")
+    st.bar_chart(comp_merged["category_name"].value_counts().head(15))
+
+    st.subheader("📋 Competition Details (Paginated)")
+    paged_df = paginate_dataframe(comp_merged, page_size=25)
+    st.dataframe(paged_df, use_container_width=True)
+
+# =====================================================
+# COMPLEXES & VENUES DASHBOARD
+# =====================================================
+elif page == "🏟️ Complexes & Venues":
+    st.title("🏟️ Complexes & Venues Analysis")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Complexes", complexes_df.shape[0])
+    col2.metric("Total Venues", venues_df.shape[0])
+    col3.metric("Countries", venues_df["country_name"].nunique())
+
+    st.divider()
+
+    st.subheader("🌍 Venues by Country")
+    st.bar_chart(venues_df["country_name"].value_counts().head(15))
+
+    st.subheader("🏟️ Venues per Complex")
+    st.bar_chart(
+        venues_df.groupby("complex_id").size().sort_values(ascending=False).head(15)
+    )
+
+    country_filter = st.selectbox(
+        "Filter Venues by Country",
+        ["All"] + sorted(venues_df["country_name"].unique())
+    )
+
+    filtered_venues = venues_df.copy()
+    if country_filter != "All":
+        filtered_venues = filtered_venues[
+            filtered_venues["country_name"] == country_filter
         ]
-    ].sort_values("rank"),
-    use_container_width=True
-)
 
-st.divider()
+    st.subheader("📋 Venue Details (Paginated)")
+    paged_df = paginate_dataframe(filtered_venues, page_size=25)
+    st.dataframe(paged_df, use_container_width=True)
 
-# -------------------------------
-# LEADERBOARDS
-# -------------------------------
-st.subheader("🏆 Leaderboards")
+# =====================================================
+# SQL QUERY EXPLORER (USER FRIENDLY)
+# =====================================================
+elif page == "🧠 SQL Explorer":
+    st.title("🧠 SQL Analytics Explorer")
 
-col1, col2 = st.columns(2)
+    sql_options = {
+        "Top 5 Ranked Competitors":
+            "SELECT name, rank, points FROM competitors c "
+            "JOIN competitor_rankings r ON c.competitor_id = r.competitor_id "
+            "ORDER BY rank LIMIT 5;",
 
-with col1:
-    st.markdown("### 🔝 Top 10 by Rank")
-    st.dataframe(
-        merged_df.sort_values("rank").head(10)[
-            ["name", "country", "rank", "points"]
-        ],
-        use_container_width=True
+        "Competitors with Highest Points":
+            "SELECT name, points FROM competitors c "
+            "JOIN competitor_rankings r ON c.competitor_id = r.competitor_id "
+            "ORDER BY points DESC LIMIT 5;",
+
+        "Competitions by Category":
+            "SELECT category_name, COUNT(*) FROM competitions c "
+            "JOIN categories cat ON c.category_id = cat.category_id "
+            "GROUP BY category_name;",
+
+        "Venues by Country":
+            "SELECT country_name, COUNT(*) FROM venues GROUP BY country_name;"
+    }
+
+    selected_query = st.selectbox(
+        "Select an analysis",
+        list(sql_options.keys())
     )
 
-with col2:
-    st.markdown("### 💎 Highest Points")
-    st.dataframe(
-        merged_df.sort_values("points", ascending=False).head(10)[
-            ["name", "country", "points"]
-        ],
-        use_container_width=True
-    )
+    st.subheader("📄 SQL Query")
+    st.code(sql_options[selected_query], language="sql")
 
-st.divider()
+    st.subheader("📊 Query Result (Preview)")
 
-# -------------------------------
-# COUNTRY-WISE ANALYSIS
-# -------------------------------
-st.subheader("🌍 Country-wise Analysis")
+    if selected_query == "Top 5 Ranked Competitors":
+        st.dataframe(merged_df.sort_values("rank").head(5))
+    elif selected_query == "Competitors with Highest Points":
+        st.dataframe(merged_df.sort_values("points", ascending=False).head(5))
+    elif selected_query == "Competitions by Category":
+        st.dataframe(
+            competitions_df.merge(categories_df, on="category_id")
+            .groupby("category_name")
+            .size()
+            .reset_index(name="count")
+        )
+    elif selected_query == "Venues by Country":
+        st.dataframe(
+            venues_df["country_name"].value_counts().reset_index()
+        )
 
-country_stats = (
-    merged_df
-    .groupby("country")
-    .agg(
-        total_competitors=("competitor_id", "count"),
-        avg_points=("points", "mean")
-    )
-    .reset_index()
-    .sort_values("total_competitors", ascending=False)
-)
-
-st.dataframe(country_stats, use_container_width=True)
-
-# -------------------------------
+# =====================================================
 # FOOTER
-# -------------------------------
-st.caption("📌 Data Source: Sportradar API (Mock Data for Rankings)")
+# =====================================================
+st.caption(
+    "📌 Data Source: Sportradar API (Mock Rankings Data) | "
+    "Project by Debashish Borah, Akash Rawat, Harshad Apage, Siya Negi"
+)

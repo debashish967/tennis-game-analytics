@@ -1,0 +1,4 @@
+rank,movement,points,competitions_played,competitor_id
+1,0,9200,18,sr:competitor:101
+2,1,8900,17,sr:competitor:102
+3,-1,8500,16,sr:competitor:103

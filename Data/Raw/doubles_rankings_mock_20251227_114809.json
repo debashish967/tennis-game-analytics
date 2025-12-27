@@ -1,0 +1,44 @@
+{
+  "generated_at": "2025-12-27T05:50:00+00:00",
+  "rankings": [
+    {
+      "rank": 1,
+      "movement": 0,
+      "points": 9200,
+      "competitions_played": 18,
+      "competitor": {
+        "id": "sr:competitor:101",
+        "name": "Nikola Mektic",
+        "country": "Croatia",
+        "country_code": "HRV",
+        "abbreviation": "MEK"
+      }
+    },
+    {
+      "rank": 2,
+      "movement": 1,
+      "points": 8900,
+      "competitions_played": 17,
+      "competitor": {
+        "id": "sr:competitor:102",
+        "name": "Mate Pavic",
+        "country": "Croatia",
+        "country_code": "HRV",
+        "abbreviation": "PAV"
+      }
+    },
+    {
+      "rank": 3,
+      "movement": -1,
+      "points": 8500,
+      "competitions_played": 16,
+      "competitor": {
+        "id": "sr:competitor:103",
+        "name": "Rajeev Ram",
+        "country": "USA",
+        "country_code": "USA",
+        "abbreviation": "RAM"
+      }
+    }
+  ]
+}
